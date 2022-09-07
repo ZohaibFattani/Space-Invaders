@@ -85,7 +85,7 @@ class Projectile{
         this.velocity = velocity
 
 //projectiles will be circular
-        this.radius = 3
+        this.radius = 4
        }
 //draws projectile
        draw(){
@@ -191,6 +191,7 @@ let columns = Math.floor(Math.random() * 10 + 2)
 //move inavder grid side to side
                 this.position.x += this.velocity.x
                 this.position.y += this.velocity.y
+//sets velocity to 0 every frame
                 this.velocity.y = 0
 //make boundareis for grid
                 if(this.position.x + this.width >= canvas.width || this.position.x <= 0){
@@ -207,7 +208,7 @@ let projectiles = [
 //spawn projectiles whenever spacebar is clicked
 ]
 //stores grids
-let grids = [new Grid()]
+let grids = []
 //creates keys to stop
 let keys = {
 a: {
@@ -220,7 +221,11 @@ space: {
 pressed: false
 },
 }
-
+//spawning grids at intervals
+        let frames = 0
+//for new grids to spawn every 500-1000 frames
+//wrapped in math.floor to make sure the variable is an integer
+     let randomInterval = Math.floor((Math.random () * 500) + 500)
 //animation loop to wait for the img src's to be loaded, then used
 function animate(){
     requestAnimationFrame(animate)
@@ -241,11 +246,61 @@ function animate(){
            }     
         })
 //selects grid, and calls grid.update()
-        grids.forEach(grid => {
-                grid.update()
-                grid.invaders.forEach(invader => {
-                        invader.update({velocity: grid.velocity})
-                })
+        grids.forEach((grid) => {
+        grid.update()
+        grid.invaders.forEach((invader, i) => {
+        invader.update({velocity: grid.velocity})
+//loop through each projectile shot
+        projectiles.forEach((Projectile, j)=> {
+//detects for collison, if top of projectile is less than the bootom of one of the invaders
+                if(Projectile.position.y - Projectile.radius <= 
+                invader.position.y + invader.height &&
+//checks to see if right side of projectile is > the left side of the invader
+                Projectile.position.x + Projectile.radius >=
+                invader.position.x &&
+//checks to see if left side of projectile is < the right side of the invader
+                Projectile.position.x - Projectile.radius <=
+                invader.position.x + invader.width &&
+//only remove enemey if bottom of projectile is > bottom of invader
+                Projectile.position.y + Projectile.radius>= 
+                invader.position.y
+                 ){
+//removes the invader, and projectile if true
+                setTimeout( () => {
+//makes sure whatever is spliced is in the invaders array
+                let invaderFound = grid.invaders.find(invader2 => 
+//checks if invader being shot is in the array
+                        invader2 === invader
+                )
+//makes sure whatever is spliced is in the projectiles array
+                let projectileFound = projectiles.find(projectile2 => 
+//checks if projectile being shot is in the array
+                        projectile2 === Projectile
+                        )
+//once invader and projectile is i the array run the splice
+                if(invaderFound && projectileFound){
+                grid.invaders.splice(i, 1)
+                 projectiles.splice(j, 1)
+
+//takes in count of new width of grid when invaders are spliced
+//if invaders are in the grid
+               if(grid.invaders.lenght > 0){
+//first invader in left hand column
+                let firstInvader = grid.invaders[0]
+//last invader in right hand column
+                let lastInvader = grid.invaders[grid.invaders.lenght - 1]
+//far right column - far left column to get new grid width
+                grid.width = lastInvader.position.x - firstInvader.position.x + lastInvader.width
+                grid.position.x = firstInvader.position.x
+//is all invaders on grid have been removed, remove it so its not being animated for no reason
+               }else{
+                grids.splice(gridIndex, 1)
+               }
+                }
+                }, 0)
+                }
+        })
+        })
         })
 //moves player to the left & sets boundary
     if(keys.a.pressed && player.position.x >= 0){
@@ -263,6 +318,16 @@ function animate(){
 //when nothing is pressed
         player.rotation = 0
     }
+// spawns new set of invaders for every 500 to 1000 frames
+    if (frames % randomInterval === 0){
+        grids.push(new Grid())
+//spawns enemies at new intervals
+        randomInterval = Math.floor((Math.random () * 500) + 500)
+//makes sure frames is divisble 
+        frames = 0
+    }
+//went through one loop of animation
+        frames++
 }
 animate()
 //gets what key is being pressed
