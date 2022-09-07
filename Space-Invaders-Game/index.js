@@ -103,6 +103,30 @@ class Projectile{
         this.position.y += this.velocity.y
        }
 }
+//creates shooting from invaders
+class InvaderProjectile{
+        constructor({position, velocity}){
+ //moves across the screen, set dynamically
+         this.position = position
+ //projectiles moves
+         this.velocity = velocity
+//projectiles will be rectangular
+         this.width = 3
+         this.height = 10
+        }
+ //draws projectile
+        draw(){
+        context.fillStyle = 'white'
+        context.fillRect(this.position.x, this.position.y, this.width, this.height)
+        }
+ //moves projectile
+        update(){
+         this.draw()
+         this.position.x += this.velocity.x
+         this.position.y += this.velocity.y
+        }
+ }
+
 //creates an invader, 
 class Invader {
         constructor({position}) {
@@ -153,6 +177,25 @@ class Invader {
             this.position.y += velocity.y
             }
             }
+//shooting for invaders
+          shoot(invaderProjectiles){
+//adds projectiles array
+        invaderProjectiles.push(
+        new InvaderProjectile({
+//references current invaders middle bottom
+        position: {
+//gets middle
+        x: this.position.x + this.width / 2,
+//gets bottom
+        y: this.position.y + this.height
+        },
+        velocity: {
+        x: 0,
+//goes up to down
+        y: 5 
+        }
+        }))
+        }  
         }
 //creates grid of invaders
         class Grid{
@@ -209,6 +252,8 @@ let projectiles = [
 ]
 //stores grids
 let grids = []
+//creates multiple invader projectiles
+let invaderProjectiles = []
 //creates keys to stop
 let keys = {
 a: {
@@ -233,6 +278,29 @@ function animate(){
     context.fillStyle = 'black'
     context.fillRect(0,0,canvas.width, canvas.height)
     player.update()
+//renders out invader projectiles
+        invaderProjectiles.forEach((invaderProjectile, index) => {
+//garbage collection
+              if (invaderProjectile.position.y + invaderProjectile.height >= canvas.height) {
+                setTimeout( () => {
+                        invaderProjectiles.splice(index, 1)
+                      }, 0) 
+              } else
+                invaderProjectile.update()
+//hit detection when invader projectiles hits player
+//bottom of projectile is >= top of player
+              if(invaderProjectile.position.y + invaderProjectile.height >= 
+                player.position.y &&
+//right side of invader projectile >= left side of player
+                invaderProjectile.position.x + invaderProjectile.width >= 
+                player.position.x &&
+//left side of invader projectile <= right side of player
+        invaderProjectile.position.x <= player.position.x +
+        player.width
+                ){
+                console.log('You Lose!')
+              }
+        })
 //renders projectiles onto screen
         projectiles.forEach((Projectile, index)  => {
 //removes projectiles once off of screen
@@ -248,6 +316,12 @@ function animate(){
 //selects grid, and calls grid.update()
         grids.forEach((grid) => {
         grid.update()
+//spawn projectiles from random invaders
+//shoot projectiles every 100th frame
+    if (frames % 100 === 0 && grid.invaders.length > 0){
+//grabs random invader from array
+        grid.invaders[Math.floor(Math.random() * grid.invaders.length)].shoot(invaderProjectiles)
+    }
         grid.invaders.forEach((invader, i) => {
         invader.update({velocity: grid.velocity})
 //loop through each projectile shot
@@ -284,15 +358,15 @@ function animate(){
 
 //takes in count of new width of grid when invaders are spliced
 //if invaders are in the grid
-               if(grid.invaders.lenght > 0){
+               if(grid.invaders.length > 0){
 //first invader in left hand column
                 let firstInvader = grid.invaders[0]
 //last invader in right hand column
-                let lastInvader = grid.invaders[grid.invaders.lenght - 1]
+                let lastInvader = grid.invaders[grid.invaders.length - 1]
 //far right column - far left column to get new grid width
                 grid.width = lastInvader.position.x - firstInvader.position.x + lastInvader.width
                 grid.position.x = firstInvader.position.x
-//is all invaders on grid have been removed, remove it so its not being animated for no reason
+//if all invaders on grid have been removed, remove it so its not being animated for no reason
                }else{
                 grids.splice(gridIndex, 1)
                }
