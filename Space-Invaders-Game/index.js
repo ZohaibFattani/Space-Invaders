@@ -1,10 +1,12 @@
 //selects canvas
 let canvas = document.querySelector('canvas')
+//selects score in html
+let scoreEL = document.getElementById('scoreEl')
 //references canvas content
 const context = canvas.getContext('2d')
-//set canvas width and height
-canvas.width = innerWidth
-canvas.height = innerHeight
+//set canvas width and height, fixed aspect ratio
+canvas.width = 1024
+canvas.height = 576
 
 //creates a player, 
 class Player{
@@ -16,6 +18,7 @@ class Player{
         }
 //add property for rotation
         this.rotation = 0
+        this.opacity = 1
 //creates html image, image object come from javascript api
         let image = new Image()
 //declare image to use
@@ -39,11 +42,9 @@ class Player{
     }
 //function for drawing player
         draw() {
-        //  context.fillStyle = 'red'
-        //  context.fillRect(this.position.x, this.position.y, this.width, this.height)
-        
 //gets snapshot of canvas
         context.save()
+        context.globalAlpha = this.opacity
 //rotates player section of the canvas
         context.translate(
         player.position.x + player.width / 2, 
@@ -103,6 +104,36 @@ class Projectile{
         this.position.y += this.velocity.y
        }
 }
+
+class Particle{
+        constructor({position, velocity, radius, color, fades}){
+         this.position = position
+         this.velocity = velocity
+         this.radius = radius
+         this.color = color
+         this.opacity = 1
+         this.fades = fades
+        }
+        draw(){
+         context.save()
+// fades out code of particle
+         context.globalAlpha = this.opacity
+         context.beginPath()
+         context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2)
+         context.fillStyle = this.color
+         context.fill()
+         context.closePath()
+         context.restore()
+        }
+        update(){
+         this.draw()
+         this.position.x += this.velocity.x
+         this.position.y += this.velocity.y
+         if(this.fades){
+                this.opacity -= 0.01
+         }
+        }
+ }
 //creates shooting from invaders
 class InvaderProjectile{
         constructor({position, velocity}){
@@ -254,6 +285,8 @@ let projectiles = [
 let grids = []
 //creates multiple invader projectiles
 let invaderProjectiles = []
+//creates particles
+let particles = []
 //creates keys to stop
 let keys = {
 a: {
@@ -271,13 +304,67 @@ pressed: false
 //for new grids to spawn every 500-1000 frames
 //wrapped in math.floor to make sure the variable is an integer
      let randomInterval = Math.floor((Math.random () * 500) + 500)
+     let game = {
+        over: false,
+        active: true
+     }
+     let score = 0
+//add stars to background
+for(let i = 0; i < 100; i++ ){
+        particles.push(new Particle({
+                position: {
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height
+                },
+                velocity: {
+                        x: 0,
+                        y: 0.3
+                },
+                radius: Math.random() * 2,
+                color: 'white'
+        }))
+}
+     function createParticles({object, color, fades}){
+        for(let i = 0; i < 15; i++ ){
+                particles.push(new Particle({
+                        position: {
+                                //spawns on middle of hit invader
+                                x: object.position.x + object.width / 2,
+                                y: object.position.y + object.height / 2
+                        },
+                        velocity: {
+                                x: (Math.random() - 0.5) * 2,
+                                y: (Math.random() -0.5) * 2
+                        },
+                        radius: Math.random() * 3,
+                        color: color || 'purple',
+                        fades
+                }))
+        }
+     }
 //animation loop to wait for the img src's to be loaded, then used
 function animate(){
+        if(!game.active) return
     requestAnimationFrame(animate)
     //changes canvas background
     context.fillStyle = 'black'
     context.fillRect(0,0,canvas.width, canvas.height)
     player.update()
+//renders out particle
+        particles.forEach((particle, i) => {
+//re-positions background particles
+                if(particle.position.y - particle.radius >= canvas.height){
+                        particle.position.x = Math.random() * canvas.width
+                        particle.position.y = -particle.radius
+                }
+                if(particle.opacity <= 0){
+                        setTimeout(() => {
+                        particles.splice(i, 1)
+                        }, 0)
+                }else {
+                particle.update()
+                }
+        })
 //renders out invader projectiles
         invaderProjectiles.forEach((invaderProjectile, index) => {
 //garbage collection
@@ -299,6 +386,20 @@ function animate(){
         player.width
                 ){
                 console.log('You Lose!')
+                setTimeout( () => {
+                invaderProjectiles.splice(index, 1)
+                player.opacity = 0
+                game.over = true
+                }, 0) 
+//to stop game when hit
+                setTimeout( () => {
+                        game.active = false;
+                        }, 500) 
+                createParticles({
+                        object: player,
+                        color: 'white',
+                        fades: true
+                })
               }
         })
 //renders projectiles onto screen
@@ -324,7 +425,7 @@ function animate(){
     }
         grid.invaders.forEach((invader, i) => {
         invader.update({velocity: grid.velocity})
-//loop through each projectile shot
+//loop through each projectile shot, hits inavder
         projectiles.forEach((Projectile, j)=> {
 //detects for collison, if top of projectile is less than the bootom of one of the invaders
                 if(Projectile.position.y - Projectile.radius <= 
@@ -351,8 +452,16 @@ function animate(){
 //checks if projectile being shot is in the array
                         projectile2 === Projectile
                         )
-//once invader and projectile is i the array run the splice
+//once invader and projectile is in the array run the splice
                 if(invaderFound && projectileFound){
+                        score += 100
+                        console.log('score')
+                        scoreEL.innerHTML = score
+//function to create multiple particles
+                createParticles({
+                        object: invader,
+                        fades: true
+                })
                 grid.invaders.splice(i, 1)
                  projectiles.splice(j, 1)
 
@@ -406,17 +515,16 @@ function animate(){
 animate()
 //gets what key is being pressed
 addEventListener('keydown', ({key}) => {
+//so player cant move or shoot
+        if(game.over) return
         switch(key){
         case 'a':                
-        console.log('left')
         keys.a.pressed = true
          break
          case 'd':                
-        console.log('right')
         keys.d.pressed = true
          break
          case ' ':                
-        console.log('space')
 //pushing projectiles into array
         projectiles.push(new Projectile({
                 position: {
@@ -437,15 +545,12 @@ addEventListener('keydown', ({key}) => {
 addEventListener('keyup', ({key}) => {
         switch(key){
         case 'a':                
-        console.log('left')
         keys.a.pressed = false
          break
          case 'd':                
-        console.log('right')
         keys.d.pressed = false
          break
          case ' ':                
-        console.log('space')
          break
         }
 })
